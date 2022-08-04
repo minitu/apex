@@ -313,7 +313,7 @@ run_conv_bias(int64_t* x_dim,
 
         auto opGraph = cudnn_frontend::OperationGraphBuilder()
           .setHandle(handle_)
-          .setOperationGraph(2, ops.data())
+          .setOperationGraph(ops.size(), ops.data())
           .build();
 
         // Create string encoding for plan caching
@@ -530,7 +530,7 @@ run_conv_bias_mask_relu(int64_t* x_dim,
 
         auto opGraph = cudnn_frontend::OperationGraphBuilder()
           .setHandle(handle_)
-          .setOperationGraph(4, ops.data())
+          .setOperationGraph(ops.size(), ops.data())
           .build();
 
         // Create string encoding for plan caching
@@ -573,11 +573,11 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
                            int64_t* conv_stride,
                            int64_t* conv_dilation,
                            cudnnDataType_t dataType,
-			   at::Half* devPtrX,
-			   at::Half* devPtrW,
-			   at::Half* devPtrS,
-			   at::Half* devPtrB,
-			   at::Half* devPtrY) {
+                           at::Half* devPtrX,
+                           at::Half* devPtrW,
+                           at::Half* devPtrS,
+                           at::Half* devPtrB,
+                           at::Half* devPtrY) {
 
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
     std::stringstream log_buf;
@@ -586,93 +586,93 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
         int conv_dim = 2;
         float alpha  = 1.0f;
         float beta   = 0.0f;
-	int64_t s_dim[] = {1, y_dim[1], 1, 1};
-	int64_t b_dim[] = {1, y_dim[1], 1, 1};
+        int64_t s_dim[] = {1, y_dim[1], 1, 1};
+        int64_t b_dim[] = {1, y_dim[1], 1, 1};
 
-	// Creates the necessary tensor descriptors
-	int64_t stride[4];
-	generateStrides(x_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto xTensor = cudnn_frontend::TensorBuilder()
-		 	    .setDim(4, x_dim)
-			    .setStrides(4, stride)
-			    .setId('x')
-			    .setAlignment(16)
-			    .setDataType(dataType)
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, xTensor.describe());
+        // Creates the necessary tensor descriptors
+        int64_t stride[4];
+        generateStrides(x_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto xTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, x_dim)
+                    .setStrides(4, stride)
+                    .setId('x')
+                    .setAlignment(16)
+                    .setDataType(dataType)
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, xTensor.describe());
 
-	generateStrides(w_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto wTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, w_dim)
-			    .setStrides(4, stride)
-			    .setId('w')
-			    .setAlignment(16)
-			    .setDataType(dataType)
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, wTensor.describe());
+        generateStrides(w_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto wTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, w_dim)
+                    .setStrides(4, stride)
+                    .setId('w')
+                    .setAlignment(16)
+                    .setDataType(dataType)
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, wTensor.describe());
 
-	generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto afterConvTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, y_dim)
-			    .setStrides(4, stride)
-			    .setId('c')
-			    .setAlignment(16)
-			    .setDataType(CUDNN_DATA_FLOAT)
-			    .setVirtual()
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, afterConvTensor.describe());
+        generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto afterConvTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, y_dim)
+                    .setStrides(4, stride)
+                    .setId('c')
+                    .setAlignment(16)
+                    .setDataType(CUDNN_DATA_FLOAT)
+                    .setVirtual()
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, afterConvTensor.describe());
 
-	generateStrides(s_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto sTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, s_dim)
-			    .setStrides(4, stride)
-			    .setId('s')
-			    .setAlignment(16)
-			    .setDataType(dataType)
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, sTensor.describe());
+        generateStrides(s_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto sTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, s_dim)
+                    .setStrides(4, stride)
+                    .setId('s')
+                    .setAlignment(16)
+                    .setDataType(dataType)
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, sTensor.describe());
 
-	generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto afterScaleTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, y_dim)
-			    .setStrides(4, stride)
-			    .setId('B')
-			    .setAlignment(16)
-			    .setDataType(CUDNN_DATA_FLOAT)
-			    .setVirtual()
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, afterScaleTensor.describe());
+        generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto afterScaleTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, y_dim)
+                    .setStrides(4, stride)
+                    .setId('S')
+                    .setAlignment(16)
+                    .setDataType(CUDNN_DATA_FLOAT)
+                    .setVirtual()
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, afterScaleTensor.describe());
 
-	generateStrides(b_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto bTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, b_dim)
-			    .setStrides(4, stride)
-			    .setId('b')
-			    .setAlignment(16)
-			    .setDataType(dataType)
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, bTensor.describe());
+        generateStrides(b_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto bTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, b_dim)
+                    .setStrides(4, stride)
+                    .setId('b')
+                    .setAlignment(16)
+                    .setDataType(dataType)
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, bTensor.describe());
 
-	generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto afterBiasTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, y_dim)
-			    .setStrides(4, stride)
-			    .setId('B')
-			    .setAlignment(16)
-			    .setDataType(CUDNN_DATA_FLOAT)
-			    .setVirtual()
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, afterBiasTensor.describe());
+        generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto afterBiasTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, y_dim)
+                    .setStrides(4, stride)
+                    .setId('B')
+                    .setAlignment(16)
+                    .setDataType(CUDNN_DATA_FLOAT)
+                    .setVirtual()
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, afterBiasTensor.describe());
 
-	generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
-	auto afterReLUTensor = cudnn_frontend::TensorBuilder()
-			    .setDim(4, y_dim)
-			    .setStrides(4, stride)
-			    .setId('y')
-			    .setAlignment(16)
-			    .setDataType(dataType)
-			    .build();
-	DEBUG_CUDNN_MSG(log_buf, afterReLUTensor.describe());
+        generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
+        auto afterReLUTensor = cudnn_frontend::TensorBuilder()
+                    .setDim(4, y_dim)
+                    .setStrides(4, stride)
+                    .setId('y')
+                    .setAlignment(16)
+                    .setDataType(dataType)
+                    .build();
+        DEBUG_CUDNN_MSG(log_buf, afterReLUTensor.describe());
 
         // Define the convolution problem
         auto convDesc = cudnn_frontend::ConvDescBuilder()
@@ -686,7 +686,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
                             .build();
         DEBUG_CUDNN_MSG(log_buf, convDesc.describe());
 
-        // Define the bias operation
+        // Define the scale operation
         auto scaleDesc = cudnn_frontend::PointWiseDescBuilder()
                             .setMode(CUDNN_POINTWISE_MUL)
                             .setMathPrecision(CUDNN_DATA_FLOAT)
@@ -720,7 +720,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
 
         // Create a scale Node.
         auto scale_op = cudnn_frontend::OperationBuilder(CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
-                           .setxDesc(scale_op.getOutputTensor())
+                           .setxDesc(conv_op.getOutputTensor())
                            .setbDesc(sTensor)
                            .setyDesc(afterScaleTensor)
                            .setpwDesc(scaleDesc)
@@ -729,7 +729,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
 
         // Create a Bias Node.
         auto bias_op = cudnn_frontend::OperationBuilder(CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
-                           .setxDesc(conv_op.getOutputTensor())
+                           .setxDesc(scale_op.getOutputTensor())
                            .setbDesc(bTensor)
                            .setyDesc(afterBiasTensor)
                            .setpwDesc(biasDesc)
@@ -749,7 +749,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
 
         auto opGraph = cudnn_frontend::OperationGraphBuilder()
           .setHandle(handle_)
-          .setOperationGraph(4, ops.data())
+          .setOperationGraph(ops.size(), ops.data())
           .build();
 
         // Create string encoding for plan caching
@@ -768,7 +768,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
         if (workspace_size > 0) {
           workspace_ptr = workspace_tensor.data_ptr<float>();
         }
-        void* data_ptrs[] = {devPtrX, devPtrW, devPtrB, devPtrY};
+        void* data_ptrs[] = {devPtrX, devPtrW, devPtrS, devPtrB, devPtrY};
         int64_t uids[]    = {'x', 'w', 's', 'b', 'y'};
         auto variantPack  = cudnn_frontend::VariantPackBuilder()
           .setWorkspacePointer(workspace_ptr)
@@ -930,7 +930,7 @@ run_conv_bias_relu(int64_t* x_dim,
 
         auto opGraph = cudnn_frontend::OperationGraphBuilder()
           .setHandle(handle_)
-          .setOperationGraph(3, ops.data())
+          .setOperationGraph(ops.size(), ops.data())
           .build();
 
         // Create string encoding for plan caching
@@ -969,10 +969,9 @@ void
 run_drelu_dscale(int64_t* dy_dim,
                  cudnnDataType_t dataType,
                  at::Half* devPtrDY,
-	 	 at::Half* devPtrR,
- 		 at::Half* devPtrDR,
- 		 at::Half* devPtrDX,
-                 float* devPtrS) {
+        	 	 at::Half* devPtrR,
+         		 at::Half* devPtrS,
+                 at::Half* devPtrDX) {
 
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
     std::stringstream log_buf;
@@ -1011,29 +1010,30 @@ run_drelu_dscale(int64_t* dy_dim,
 		 	 .setStrides(4, stride)
 			 .setId('R')
 			 .setAlignment(16)
-			 .setDataType(dataType)
+			 .setDataType(CUDNN_DATA_FLOAT)
+             .setVirtual()
 			 .build();
 	DEBUG_CUDNN_MSG(log_buf, inActGradTensor.describe());
 
-        generateStrides(b_dim, stride, 4, CUDNN_TENSOR_NHWC);
-        auto scaleTensor = cudnn_frontend::TensorBuilder()
-                         .setDim(4, s_dim)
-                         .setStrides(4, stride)
-                         .setId('s')
-                         .setAlignment(16)
-                         .setDataType(dataType)
-                         .build();
-        DEBUG_CUDNN_MSG(log_buf, biasGradTensor.describe());
+    generateStrides(s_dim, stride, 4, CUDNN_TENSOR_NHWC);
+    auto scaleTensor = cudnn_frontend::TensorBuilder()
+                     .setDim(4, s_dim)
+                     .setStrides(4, stride)
+                     .setId('s')
+                     .setAlignment(16)
+                     .setDataType(dataType)
+                     .build();
+    DEBUG_CUDNN_MSG(log_buf, biasGradTensor.describe());
 
-        generateStrides(dx_dim, stride, 4, CUDNN_TENSOR_NHWC);
-        auto dxTensor = cudnn_frontend::TensorBuilder()
-                         .setDim(4, dy_dim)
-                         .setStrides(4, stride)
-                         .setId('x')
-                         .setAlignment(16)
-                         .setDataType(dataType)
-                         .build();
-        DEBUG_CUDNN_MSG(log_buf, dxTensor.describe());
+    generateStrides(dy_dim, stride, 4, CUDNN_TENSOR_NHWC);
+    auto dxTensor = cudnn_frontend::TensorBuilder()
+                     .setDim(4, dy_dim)
+                     .setStrides(4, stride)
+                     .setId('x')
+                     .setAlignment(16)
+                     .setDataType(dataType)
+                     .build();
+    DEBUG_CUDNN_MSG(log_buf, dxTensor.describe());
 
 	// Define the activation backward operation
 	auto actDesc = cudnn_frontend::PointWiseDescBuilder()
@@ -1045,7 +1045,7 @@ run_drelu_dscale(int64_t* dy_dim,
 	// Define the bias backward operation
 	auto scaleDesc = cudnn_frontend::PointWiseDescBuilder()
 	  .setMode(CUDNN_POINTWISE_MUL)
-          .setMathPrecision(CUDNN_DATA_HALF)
+          .setMathPrecision(CUDNN_DATA_FLOAT)
 	  .build();
 	DEBUG_CUDNN_MSG(log_buf, scaleDesc.describe());
 
@@ -1065,7 +1065,7 @@ run_drelu_dscale(int64_t* dy_dim,
 	  .setyDesc(dxTensor)
 	  .setpwDesc(scaleDesc)
 	  .build();
-	DEBUG_CUDNN_MSG(log_buf, bias_op.describe());
+	DEBUG_CUDNN_MSG(log_buf, scale_op.describe());
 
 	// Create an Operation Graph. In this case it is bias only
 	std::array<cudnn_frontend::Operation const*, 2> ops = {&act_op, &scale_op};
@@ -1080,7 +1080,7 @@ run_drelu_dscale(int64_t* dy_dim,
 	int64_t pad_dummy[] = {40, 40};
 	int64_t stride_dummy[] = {40, 40};
 	int64_t dilation_dummy[] = {40, 40};
-	auto cache_string = getConvFusionString(dy_dim, pad_dummy, stride_dummy, dilation_dummy, b_dim, dataType, opGraph.getTag());
+	auto cache_string = getConvFusionString(dy_dim, pad_dummy, stride_dummy, dilation_dummy, s_dim, dataType, opGraph.getTag());
 	DEBUG_CUDNN_MSG(log_buf, "[convstring] " << cache_string);
 
 	auto& plan = getOrCreatePlan(handle_, log_buf, opGraph, cache_string);
@@ -1094,12 +1094,12 @@ run_drelu_dscale(int64_t* dy_dim,
 	if (workspace_size > 0) {
 	    workspace_ptr = workspace_tensor.data_ptr<float>();
 	}
-	void* data_ptrs[] = {devPtrDY, devPtrR, devPtrDR, devPtrDB};
-	int64_t uids[]    = {'y', 'r', 'R', 's', 'x'};
+	void* data_ptrs[] = {devPtrDY, devPtrR, devPtrS, devPtrDX};
+	int64_t uids[]    = {'y', 'r', 's', 'x'};
 	auto variantPack  = cudnn_frontend::VariantPackBuilder()
 	  .setWorkspacePointer(workspace_ptr)
-	  .setDataPointers(5, data_ptrs)
-	  .setUids(5, uids)
+	  .setDataPointers(4, data_ptrs)
+	  .setUids(4, uids)
 	  .build();
 	DEBUG_CUDNN_MSG(log_buf, "variantPack " << variantPack.describe());
 	cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
@@ -1749,13 +1749,13 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_forward(std::vector<at::Tensor> i
   run_conv_cscale_cbias_relu(x_dim,
 		             w_dim,
 		             y_dim,
-    		             conv_pad,
+    		         conv_pad,
 		             conv_stride,
 		             conv_dilation,
 		             CUDNN_DATA_HALF,
 		             x,
 		             w,
-			     s,
+			         s,
 		             b,
 		             y);
 
@@ -1770,7 +1770,7 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_forward(std::vector<at::Tensor> i
 std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
   bool requires_grad = inputs[0].requires_grad();
 
-  for (int i = 0; i <= 3; i++) {
+  for (int i = 0; i <= 4; i++) {
     CHECK_INPUT(inputs[i]);
   }
 
@@ -1781,7 +1781,7 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
   auto output_format = at::MemoryFormat::ChannelsLast;
 
   // setup dimensions
-  int64_t x_dim[]        = {0, 0, 0, 0};
+  int64_t x_dim[]    = {0, 0, 0, 0};
   int64_t w_dim[]	 = {0, 0, 0, 0};
   int64_t y_dim[]	 = {0, 0, 0, 0};
 
@@ -1803,17 +1803,15 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
   // drelu-dbias
   at::Half* dy = inputs[4].data_ptr<at::Half>();
   at::Half* r = inputs[3].data_ptr<at::Half>();
-  auto drelu = at::empty_like(inputs[3]);
-  at::Half* dr = drelu.data_ptr<at::Half>();
   auto s = inputs[2].data_ptr<at::Half>();
-  at::Half* ds = dgrad.data_ptr<at::Half>();
+  auto dscale = at::empty_like(inputs[0]);
+  at::Half* ds = dscale.data_ptr<at::Half>();
 
   auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
   run_drelu_dscale(y_dim,
 		   CUDNN_DATA_HALF,
 		   dy,
 		   r,
-		   dr,
 		   s,
 		   ds);
 
@@ -1853,95 +1851,6 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
   outputs.push_back(wgrad);
 
   return outputs;
-}
-
-
-std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
-  bool requires_grad = inputs[0].requires_grad();
-
-  for (int i = 0; i <= 3; i++) {
-    CHECK_INPUT(inputs[i]);
-  }
-
-  std::cout << std::fixed;
-
-  // create output vector
-  std::vector<at::Tensor> outputs;
-  auto output_format = at::MemoryFormat::ChannelsLast;
-
-  // setup dimensions
-  int64_t x_dim[]        = {0, 0, 0, 0};
-  int64_t w_dim[]	 = {0, 0, 0, 0};
-  int64_t y_dim[]	 = {0, 0, 0, 0};
-
-  // All dim calculation after this order of n,c,h,w
-  int axis[] = {0, 1, 2, 3};
-  for (int dim = 0; dim < 4; dim++) {
-    x_dim[dim] = inputs[0].size(axis[dim]);
-    w_dim[dim] = inputs[1].size(axis[dim]);
-    y_dim[dim] = inputs[3].size(axis[dim]);
-  }
-  
-  int64_t b_dim[]       = {1, y_dim[1], 1, 1};
-
-  int64_t conv_pad[]        = {padding, padding};
-  int64_t conv_stride[]     = {stride, stride};
-  int64_t conv_dilation[]   = {1, 1};
-
-  // run
-  // drelu-dbias
-  at::Half* dy = inputs[3].data_ptr<at::Half>();
-  at::Half* r = inputs[2].data_ptr<at::Half>();
-  auto drelu = at::empty_like(inputs[2]);
-  at::Half* dr = drelu.data_ptr<at::Half>();
-  auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
-  auto bgrad = at::empty(b_dim, options, output_format);
-  float* db = bgrad.data_ptr<float>();
-  run_drelu_dbias(y_dim,
-		  CUDNN_DATA_HALF,
-		  dy,
-		  r,
-		  dr,
-		  db);
-
-  // conv wgrad
-  at::Half* x = inputs[0].data_ptr<at::Half>();
-  auto wgrad = at::empty_like(inputs[1]);
-  at::Half* dw = wgrad.data_ptr<at::Half>(); 
-  run_dconv(x_dim,
-	    w_dim,
-	    y_dim,
-	    conv_pad,
-	    conv_stride,
-	    conv_dilation,
-	    CUDNN_DATA_HALF,
-	    x,
-	    dw,
-	    dr,
-	    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_FILTER_DESCRIPTOR);
-
-  // conv dgrad
-  at::Half* w = inputs[1].data_ptr<at::Half>();
-  auto dgrad = at::empty_like(inputs[0]);
-  at::Half* dx = dgrad.data_ptr<at::Half>();
-  run_dconv(x_dim,
-	    w_dim,
-	    y_dim,
-	    conv_pad,
-	    conv_stride,
-	    conv_dilation,
-	    CUDNN_DATA_HALF,
-	    dx,
-	    w,
-	    dr,
-	    CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_DATA_DESCRIPTOR);
-
-  outputs.push_back(dgrad);
-  outputs.push_back(wgrad);
-  outputs.push_back(bgrad);
-
-  return outputs;
-
 }
 
 
