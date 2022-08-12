@@ -969,8 +969,8 @@ void
 run_drelu_dscale(int64_t* dy_dim,
                  cudnnDataType_t dataType,
                  at::Half* devPtrDY,
-        	 	 at::Half* devPtrR,
-         		 at::Half* devPtrS,
+                 at::Half* devPtrR,
+         	 at::Half* devPtrS,
                  at::Half* devPtrDX) {
 
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
@@ -1023,7 +1023,7 @@ run_drelu_dscale(int64_t* dy_dim,
                      .setAlignment(16)
                      .setDataType(dataType)
                      .build();
-    DEBUG_CUDNN_MSG(log_buf, biasGradTensor.describe());
+    DEBUG_CUDNN_MSG(log_buf, scaleTensor.describe());
 
     generateStrides(dy_dim, stride, 4, CUDNN_TENSOR_NHWC);
     auto dxTensor = cudnn_frontend::TensorBuilder()
@@ -1697,8 +1697,6 @@ std::vector<at::Tensor> conv_bias_mask_relu_forward(std::vector<at::Tensor> inpu
 		          m,
 		          y);
 
-  DEBUG_MSG("[DEBUG] conv-bias-mask-relu : " << y.to(at::kFloat).sum().item<float>());
-
   outputs.push_back(out);
 
   return outputs;
@@ -1749,17 +1747,15 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_forward(std::vector<at::Tensor> i
   run_conv_cscale_cbias_relu(x_dim,
 		             w_dim,
 		             y_dim,
-    		         conv_pad,
+    		             conv_pad,
 		             conv_stride,
 		             conv_dilation,
 		             CUDNN_DATA_HALF,
 		             x,
 		             w,
-			         s,
+			     s,
 		             b,
 		             y);
-
-  DEBUG_MSG("[DEBUG] conv-cscale-cbias-relu : " << y.to(at::kFloat).sum().item<float>());
 
   outputs.push_back(out);
 
@@ -1804,7 +1800,7 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
   at::Half* dy = inputs[4].data_ptr<at::Half>();
   at::Half* r = inputs[3].data_ptr<at::Half>();
   auto s = inputs[2].data_ptr<at::Half>();
-  auto dscale = at::empty_like(inputs[0]);
+  auto dscale = at::empty_like(inputs[4]);
   at::Half* ds = dscale.data_ptr<at::Half>();
 
   auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
@@ -1905,8 +1901,6 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
 		     w,
 		     b,
 		     y);
-
-  DEBUG_MSG("[DEBUG] conv-bias-relu : " << y.to(at::kFloat).sum().item<float>());
 
   outputs.push_back(out);
 
@@ -2053,8 +2047,6 @@ std::vector<at::Tensor> conv_bias_forward(std::vector<at::Tensor> inputs, int64_
 	        w,
 	        b,
 	        y);
-
-  DEBUG_MSG("[DEBUG] conv-bias : " << y.to(at::kFloat).sum().item<float>());
 
   outputs.push_back(out);
 
