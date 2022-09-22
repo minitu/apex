@@ -1,11 +1,12 @@
-import torch
-from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension, CUDA_HOME
-from setuptools import setup, find_packages
-import subprocess
-
 import sys
 import warnings
 import os
+
+from setuptools import setup, find_packages
+import subprocess
+
+import torch
+from torch.utils.cpp_extension import BuildExtension, CppExtension, CUDAExtension, CUDA_HOME, load
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -256,6 +257,30 @@ if "--cuda_ext" in sys.argv:
             sources=[
                 "csrc/megatron/scaled_upper_triang_masked_softmax.cpp",
                 "csrc/megatron/scaled_upper_triang_masked_softmax_cuda.cu",
+            ],
+            include_dirs=[os.path.join(this_dir, "csrc")],
+            extra_compile_args={
+                "cxx": ["-O3"] + version_dependent_macros,
+                "nvcc": append_nvcc_threads(
+                    [
+                        "-O3",
+                        "-U__CUDA_NO_HALF_OPERATORS__",
+                        "-U__CUDA_NO_HALF_CONVERSIONS__",
+                        "--expt-relaxed-constexpr",
+                        "--expt-extended-lambda",
+                    ]
+                    + version_dependent_macros
+                ),
+            },
+        )
+    )
+
+    ext_modules.append(
+        CUDAExtension(
+            name="generic_scaled_masked_softmax_cuda",
+            sources=[
+                "csrc/megatron/generic_scaled_masked_softmax.cpp",
+                "csrc/megatron/generic_scaled_masked_softmax_cuda.cu",
             ],
             include_dirs=[os.path.join(this_dir, "csrc")],
             extra_compile_args={
@@ -663,6 +688,23 @@ if "--fast_bottleneck" in sys.argv:
             )
         )
 
+if "--cudnn_gbn" in sys.argv:
+    sys.argv.remove("--cudnn_gbn")
+    raise_if_cuda_home_none("--cudnn_gbn")
+    if check_cudnn_version_and_warn("--cudnn_gbn", 8500):
+        subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/cudnn-frontend/"])
+        ext_modules.append(
+            CUDAExtension(
+                name="cudnn_gbn_lib",
+                sources=[
+                    "apex/contrib/csrc/cudnn_gbn/norm_sample.cpp",
+                    "apex/contrib/csrc/cudnn_gbn/cudnn_gbn.cpp",
+                ],
+                include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
+                extra_compile_args={"cxx": ["-O3", "-g"] + version_dependent_macros + generator_flag},
+            )
+        )
+
 if "--peer_memory" in sys.argv:
     sys.argv.remove("--peer_memory")
     raise_if_cuda_home_none("--peer_memory")
@@ -677,19 +719,32 @@ if "--peer_memory" in sys.argv:
         )
     )
 
+# NOTE: Requires NCCL >= 2.10.3
 if "--nccl_p2p" in sys.argv:
     sys.argv.remove("--nccl_p2p")
     raise_if_cuda_home_none("--nccl_p2p")
-    ext_modules.append(
-        CUDAExtension(
-            name="nccl_p2p_cuda",
-            sources=[
-                "apex/contrib/csrc/nccl_p2p/nccl_p2p_cuda.cu",
-                "apex/contrib/csrc/nccl_p2p/nccl_p2p.cpp",
-            ],
-            extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-        )
+    # Check NCCL version.
+    _nccl_version_getter = load(
+        name="_nccl_version_getter",
+        sources=["apex/contrib/csrc/nccl_p2p/nccl_version.cpp", "apex/contrib/csrc/nccl_p2p/nccl_version_check.cu"],
+
     )
+    _available_nccl_version = _nccl_version_getter.get_nccl_version()
+    if _available_nccl_version >= (2, 10):
+        ext_modules.append(
+            CUDAExtension(
+                name="nccl_p2p_cuda",
+                sources=[
+                    "apex/contrib/csrc/nccl_p2p/nccl_p2p_cuda.cu",
+                    "apex/contrib/csrc/nccl_p2p/nccl_p2p.cpp",
+                ],
+                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
+            )
+        )
+    else:
+        warnings.warn(
+            f"Skip `--nccl_p2p` as it requires NCCL 2.10.3 or later, but {_available_nccl_version[0]}.{_available_nccl_version[1]}"
+        )
 
 
 if "--fused_conv_bias_relu" in sys.argv:
