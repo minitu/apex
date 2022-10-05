@@ -757,7 +757,34 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
         auto cache_string = getConvFusionString(x_dim, conv_pad, conv_stride, dilation_dummy, w_dim, dataType, opGraph.getTag());
         DEBUG_CUDNN_MSG(log_buf, "[convstring] " << cache_string);
 
-        auto& plan = getOrCreatePlan(handle_, log_buf, opGraph, cache_string);
+		auto it = plan_cache.find(cache_string);
+		if (it == plan_cache.end()) {
+			// How many engines support this operation graph ?
+				auto total_engines = opGraph.getEngineCount();
+				DEBUG_CUDNN_MSG(log_buf, opGraph.describe() << " has " << total_engines << " engines.");
+				// We have to randomly pick one engine from [0, total_engines)
+				// Selecting "0" by default
+				auto engine = cudnn_frontend::EngineBuilder().setGlobalEngineIdx(0).setOperationGraph(opGraph).build();
+				DEBUG_CUDNN_MSG(log_buf, engine.describe());
+				auto& knobs = engine.getSupportedKnobs();
+				for (auto it = std::begin(knobs); it != std::end(knobs); ++it) {
+					DEBUG_CUDNN_MSG(log_buf, it->describe());
+				}
+				if (knobs.begin() != knobs.end()) {
+					DEBUG_CUDNN_MSG(log_buf, "Updated knob choice");
+                    knobs[0].setChoice(1);
+                    knobs[1].setChoice(2);
+					DEBUG_CUDNN_MSG(log_buf, knobs.begin()->describe());
+				}
+
+				// Createmplacee the requisite engine config
+				auto engine_config = cudnn_frontend::EngineConfigBuilder().setEngine(engine).build();
+				DEBUG_CUDNN_MSG(log_buf, engine_config.describe());
+				plan_cache.emplace(cache_string, std::move(cudnn_frontend::ExecutionPlanBuilder().setHandle(handle_).setEngineConfig(engine_config).build()));
+		}
+
+		auto& plan = plan_cache.find(cache_string)->second; // getOrCreatePlan(handle_, log_buf, opGraph, cache_string);
+
         DEBUG_CUDNN_MSG(log_buf, "Plan tag: " << plan.getTag());
 
         auto workspace_size = plan.getWorkspaceSize();
