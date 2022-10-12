@@ -772,8 +772,14 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
 				}
 				if (knobs.begin() != knobs.end()) {
 					DEBUG_CUDNN_MSG(log_buf, "Updated knob choice");
-                    knobs[0].setChoice(1);
-                    knobs[1].setChoice(2);
+			                knobs[0].setChoice(1);
+          				int knob_choice = 2;
+			   	        if(x_dim[1] == 64) knob_choice = 10;
+			          	else if(x_dim[1] == 256) {
+				          if(w_dim[0] == 128) knob_choice = 6;
+				          else if(w_dim[0] == 256) knob_choice = 3;
+				        }
+				        knobs[1].setChoice(knob_choice);
 					DEBUG_CUDNN_MSG(log_buf, knobs.begin()->describe());
 				}
 
@@ -1110,7 +1116,50 @@ run_drelu_dscale(int64_t* dy_dim,
 	auto cache_string = getConvFusionString(dy_dim, pad_dummy, stride_dummy, dilation_dummy, s_dim, dataType, opGraph.getTag());
 	DEBUG_CUDNN_MSG(log_buf, "[convstring] " << cache_string);
 
-	auto& plan = getOrCreatePlan(handle_, log_buf, opGraph, cache_string);
+	auto it = plan_cache.find(cache_string);
+	if (it == plan_cache.end()) {
+		// How many engines support this operation graph ?
+			auto total_engines = opGraph.getEngineCount();
+			DEBUG_CUDNN_MSG(log_buf, opGraph.describe() << " has " << total_engines << " engines.");
+			// We have to randomly pick one engine from [0, total_engines)
+			// Selecting "0" by default
+			auto engine = cudnn_frontend::EngineBuilder().setGlobalEngineIdx(0).setOperationGraph(opGraph).build();
+			DEBUG_CUDNN_MSG(log_buf, engine.describe());
+			auto& knobs = engine.getSupportedKnobs();
+			for (auto it = std::begin(knobs); it != std::end(knobs); ++it) {
+				DEBUG_CUDNN_MSG(log_buf, it->describe());
+			}
+			if (knobs.begin() != knobs.end()) {
+				DEBUG_CUDNN_MSG(log_buf, "Updated knob choice");
+	    			knobs[0].setChoice(1);
+				int knob_choice = 31;
+				if(dy_dim[1] == 128) {
+				  if(dy_dim[2] == 400) knob_choice = 26;
+				  else if(dy_dim[2] == 200) knob_choice = 10;
+				}
+				else if(dy_dim[1] == 256) {
+				  if(dy_dim[2] == 200) knob_choice = 1;
+				  else if(dy_dim[2] == 100) knob_choice = 21;
+				}
+				else if(dy_dim[1] == 512) {
+				  if(dy_dim[2] == 100) knob_choice = 23;
+				  else if(dy_dim[2] == 50) knob_choice = 15;
+				}
+				else if(dy_dim[1] == 1024) {
+				  if(dy_dim[2] == 50) knob_choice = 23;
+				  else if(dy_dim[2] == 25) knob_choice = 9;
+				}
+				knobs[1].setChoice(knob_choice);
+				DEBUG_CUDNN_MSG(log_buf, knobs.begin()->describe());
+			}
+
+			// Createmplacee the requisite engine config
+			auto engine_config = cudnn_frontend::EngineConfigBuilder().setEngine(engine).build();
+			DEBUG_CUDNN_MSG(log_buf, engine_config.describe());
+			plan_cache.emplace(cache_string, std::move(cudnn_frontend::ExecutionPlanBuilder().setHandle(handle_).setEngineConfig(engine_config).build()));
+	}
+
+	auto& plan = plan_cache.find(cache_string)->second; // getOrCreatePlan(handle_, log_buf, opGraph, cache_string);
 	DEBUG_CUDNN_MSG(log_buf, "Plan tag: " << plan.getTag());
 
 	auto workspace_size = plan.getWorkspaceSize();
