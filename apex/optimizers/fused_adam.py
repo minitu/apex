@@ -71,7 +71,6 @@ class FusedAdam(torch.optim.Optimizer):
         lr = torch.tensor(lr, dtype=torch.float32) if capturable else lr
         defaults = dict(lr=lr, bias_correction=bias_correction,
                         betas=betas, eps=eps, weight_decay=weight_decay)
-        tensor_state = ['lr']
         super(FusedAdam, self).__init__(params, defaults)
         self.adam_w_mode = 1 if adam_w_mode else 0
         self.set_grad_none = set_grad_none
@@ -94,8 +93,6 @@ class FusedAdam(torch.optim.Optimizer):
             self.multi_tensor_adam_capturable = amp_C.multi_tensor_adam_capturable
         else:
             raise RuntimeError('apex.optimizers.FusedAdam requires cuda extensions')
-
-        self._step_supports_amp_scaling = True
 
     def zero_grad(self):
         if self.set_grad_none:

@@ -72,11 +72,11 @@ void multi_tensor_adam_cuda(
   int chunk_size,
   at::Tensor noop_flag,
   std::vector<std::vector<at::Tensor>> tensor_lists,
-  at::Tensor lr,
+  const float lr,
   const float beta1,
   const float beta2,
   const float epsilon,
-  at::Tensor step,
+  const int step,
   const int mode,
   const int bias_correction,
   const float weight_decay);
