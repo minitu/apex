@@ -286,7 +286,7 @@ struct AdamCapturableMasterFunctor
     v += chunk_idx*chunk_size;
 
     T* p_model = (T*)tl.addresses[4][tensor_loc];
-    p_master += chunk_idx*chunk_size;
+    p_model += chunk_idx*chunk_size;
 
     n -= chunk_idx*chunk_size;
 
