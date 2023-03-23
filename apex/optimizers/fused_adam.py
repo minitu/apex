@@ -75,7 +75,8 @@ class FusedAdam(torch.optim.Optimizer):
                         betas=betas, eps=eps, weight_decay=weight_decay)
         self.use_master = use_master
         if self.use_master:
-            self.master_params = [p.data.clone().detach().float() for p in params]
+            self.model_params = params
+            params = [torch.nn.Parameter(p.data.clone().detach().float()) for p in self.model_params]
         super(FusedAdam, self).__init__(params, defaults)
         self.adam_w_mode = 1 if adam_w_mode else 0
         self.set_grad_none = set_grad_none
@@ -107,6 +108,9 @@ class FusedAdam(torch.optim.Optimizer):
                     p.grad = None
         else:
             super(FusedAdam, self).zero_grad()
+        if self.use_master:
+            for p in self.model_params:
+                p.grad = None
 
     def step(self, closure=None, grads=None, output_params=None, scale=None, grad_norms=None, grad_scaler=None):
         """Performs a single optimization step.
@@ -139,13 +143,21 @@ class FusedAdam(torch.optim.Optimizer):
             g_16, p_16, m_16, v_16 = [], [], [], []
             g_bf, p_bf, m_bf, v_bf = [], [], [], []
             g_32, p_32, m_32, v_32 = [], [], [], []
-            p_16_master = []
+            p_32_model = []
 
             for pi, p in enumerate(group['params']):
-                if p.grad is None:
-                    continue
-                if p.grad.data.is_sparse:
-                    raise RuntimeError('FusedAdam does not support sparse gradients, please consider SparseAdam instead')
+                if self.use_master:
+                    model_p = self.model_params[pi]
+                    assert(model_p.size() == p.size())
+                    if model_p.grad is None:
+                        continue
+                    if model_p.grad.data.is_sparse:
+                        raise RuntimeError('FusedAdam does not support sparse gradients, please consider SparseAdam instead')
+                else:
+                    if p.grad is None:
+                        continue
+                    if p.grad.data.is_sparse:
+                        raise RuntimeError('FusedAdam does not support sparse gradients, please consider SparseAdam instead')
 
                 state = self.state[p]
                 # State initialization
@@ -156,8 +168,6 @@ class FusedAdam(torch.optim.Optimizer):
                     state['exp_avg_sq'] = torch.zeros_like(p.data).float()
 
                 if p.dtype == torch.float16:
-                    if self.use_master:
-                        p_16_master.append(self.master_params[pi])
                     g_16.append(p.grad.data)
                     p_16.append(p.data)
                     m_16.append(state['exp_avg'])
@@ -168,7 +178,11 @@ class FusedAdam(torch.optim.Optimizer):
                     m_bf.append(state['exp_avg'])
                     v_bf.append(state['exp_avg_sq'])
                 elif p.dtype == torch.float32:
-                    g_32.append(p.grad.data)
+                    if self.use_master:
+                        g_32.append(model_p.grad.data)
+                        p_32_model.append(model_p.data)
+                    else:
+                        g_32.append(p.grad.data)
                     p_32.append(p.data)
                     m_32.append(state['exp_avg'])
                     v_32.append(state['exp_avg_sq'])
@@ -195,11 +209,9 @@ class FusedAdam(torch.optim.Optimizer):
                     inv_scale = torch.ones((1,), device=device)
 
                 if len(g_16) > 0:
-                    multi_tensor_applier(self.multi_tensor_adam_capturable_master if self.use_master
-                            else self.multi_tensor_adam_capturable,
+                    multi_tensor_applier(self.multi_tensor_adam_capturable,
                             self._dummy_overflow_buf,
-                            [g_16, p_16, m_16, v_16, p_16_master] if self.use_master
-                            else [g_16, p_16, m_16, v_16],
+                            [g_16, p_16, m_16, v_16],
                             group['lr'],
                             beta1,
                             beta2,
@@ -226,9 +238,11 @@ class FusedAdam(torch.optim.Optimizer):
                             inv_scale)
 
                 if len(g_32) > 0:
-                    multi_tensor_applier(self.multi_tensor_adam_capturable,
+                    multi_tensor_applier(self.multi_tensor_adam_capturable_master if self.use_master
+                            else self.multi_tensor_adam_capturable,
                             self._dummy_overflow_buf,
-                            [g_32, p_32, m_32, v_32],
+                            [g_32, p_32, m_32, v_32, p_32_model] if self.use_master
+                            else [g_32, p_32, m_32, v_32],
                             group['lr'],
                             beta1,
                             beta2,

@@ -190,6 +190,7 @@ struct AdamCapturableFunctor
         if(i < n && i < chunk_size)
         {
           r_g[ii] = static_cast<MATH_T>(g[i]) * (*inv_scale);
+          g[i] = static_cast<T>(r_g[ii]);
           r_p[ii] = static_cast<MATH_T>(p[i]);
           r_m[ii] = static_cast<MATH_T>(m[i]);
           r_v[ii] = static_cast<MATH_T>(v[i]);
@@ -229,7 +230,6 @@ struct AdamCapturableFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-          g[i] = static_cast<T>(r_g[ii]);
           p[i] = static_cast<T>(r_p[ii]);
           m[i] = static_cast<T>(r_m[ii]);
           v[i] = static_cast<T>(r_v[ii]);
@@ -276,7 +276,7 @@ struct AdamCapturableMasterFunctor
     T* g = (T*)tl.addresses[0][tensor_loc];
     g += chunk_idx*chunk_size;
 
-    T* p = (T*)tl.addresses[1][tensor_loc];
+    FULL_T* p = (FULL_T*)tl.addresses[1][tensor_loc];
     p += chunk_idx*chunk_size;
 
     FULL_T* m = (FULL_T*)tl.addresses[2][tensor_loc];
@@ -285,7 +285,7 @@ struct AdamCapturableMasterFunctor
     FULL_T* v = (FULL_T*)tl.addresses[3][tensor_loc];
     v += chunk_idx*chunk_size;
 
-    FULL_T* p_master = (FULL_T*)tl.addresses[4][tensor_loc];
+    T* p_model = (T*)tl.addresses[4][tensor_loc];
     p_master += chunk_idx*chunk_size;
 
     n -= chunk_idx*chunk_size;
@@ -306,7 +306,8 @@ struct AdamCapturableMasterFunctor
         if(i < n && i < chunk_size)
         {
           r_g[ii] = static_cast<MATH_T>(g[i]) * (*inv_scale);
-          r_p[ii] = static_cast<MATH_T>(p_master[i]);
+          g[i] = static_cast<T>(r_g[ii]);
+          r_p[ii] = static_cast<MATH_T>(p[i]);
           r_m[ii] = static_cast<MATH_T>(m[i]);
           r_v[ii] = static_cast<MATH_T>(v[i]);
         } else {
@@ -345,9 +346,8 @@ struct AdamCapturableMasterFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-          g[i] = static_cast<T>(r_g[ii]);
           p[i] = static_cast<T>(r_p[ii]);
-          p_master[i] = static_cast<FULL_T>(r_p[ii]);
+          p_model[i] = static_cast<T>(r_p[ii]);
           m[i] = static_cast<FULL_T>(r_m[ii]);
           v[i] = static_cast<FULL_T>(r_v[ii]);
         }
@@ -456,21 +456,23 @@ void multi_tensor_adam_capturable_master_cuda(
 
   DISPATCH_DOUBLE_FLOAT_HALF_AND_BFLOAT(
     tensor_lists[0][0].scalar_type(), 0, "adam",
-    multi_tensor_apply<5>(
-      BLOCK_SIZE,
-      chunk_size,
-      noop_flag,
-      tensor_lists,
-      AdamCapturableMasterFunctor<scalar_t_0, float>(),
-      beta1,
-      beta2,
-      step.data_ptr<int>(),
-      bias_correction,
-      epsilon,
-      lr.data_ptr<float>(),
-      (adamMode_t) mode,
-      weight_decay,
-      inv_scale.data_ptr<float>()); )
+    DISPATCH_DOUBLE_FLOAT_HALF_AND_BFLOAT(
+      tensor_lists[1][0].scalar_type(), 1, "adam",
+      multi_tensor_apply<5>(
+        BLOCK_SIZE,
+        chunk_size,
+        noop_flag,
+        tensor_lists,
+        AdamCapturableMasterFunctor<scalar_t_0, scalar_t_1>(),
+        beta1,
+        beta2,
+        step.data_ptr<int>(),
+        bias_correction,
+        epsilon,
+        lr.data_ptr<float>(),
+        (adamMode_t) mode,
+        weight_decay,
+        inv_scale.data_ptr<float>()); ))
 
   AT_CUDA_CHECK(cudaGetLastError());
 
