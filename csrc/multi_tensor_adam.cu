@@ -346,7 +346,7 @@ struct AdamCapturableMasterFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-          p[i] = static_cast<T>(r_p[ii]);
+          p[i] = static_cast<FULL_T>(r_p[ii]);
           p_model[i] = static_cast<T>(r_p[ii]);
           m[i] = static_cast<FULL_T>(r_m[ii]);
           v[i] = static_cast<FULL_T>(r_v[ii]);
