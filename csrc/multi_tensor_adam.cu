@@ -245,7 +245,7 @@ struct AdamCapturableMasterFunctor
    __device__ __forceinline__ void operator()(
     int chunk_size,
     volatile int* noop_gmem,
-    TensorListMetadata<5>& tl,
+    TensorListMetadata<6>& tl,
     const float beta1,
     const float beta2,
     const int* step,
@@ -285,7 +285,10 @@ struct AdamCapturableMasterFunctor
     FULL_T* v = (FULL_T*)tl.addresses[3][tensor_loc];
     v += chunk_idx*chunk_size;
 
-    T* p_model = (T*)tl.addresses[4][tensor_loc];
+    T* g_model = (T*)tl.addresses[4][tensor_loc];
+    g_model += chunk_idx*chunk_size;
+
+    T* p_model = (T*)tl.addresses[5][tensor_loc];
     p_model += chunk_idx*chunk_size;
 
     n -= chunk_idx*chunk_size;
@@ -306,7 +309,8 @@ struct AdamCapturableMasterFunctor
         if(i < n && i < chunk_size)
         {
           r_g[ii] = static_cast<MATH_T>(g[i]) * (*inv_scale);
-          g[i] = static_cast<FULL_T>(r_g[ii]);
+          g[i] = static_cast<FULL_T>(r_g[ii]); // TODO: probably unnecessary
+          g_model[i] = static_cast<T>(r_g[ii]);
           r_p[ii] = static_cast<MATH_T>(p[i]);
           r_m[ii] = static_cast<MATH_T>(m[i]);
           r_v[ii] = static_cast<MATH_T>(v[i]);
@@ -458,7 +462,7 @@ void multi_tensor_adam_capturable_master_cuda(
     tensor_lists[4][0].scalar_type(), 0, "adam",
     DISPATCH_DOUBLE_FLOAT_HALF_AND_BFLOAT(
       tensor_lists[1][0].scalar_type(), 1, "adam",
-      multi_tensor_apply<5>(
+      multi_tensor_apply<6>(
         BLOCK_SIZE,
         chunk_size,
         noop_flag,
