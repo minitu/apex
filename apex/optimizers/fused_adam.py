@@ -153,6 +153,8 @@ class FusedAdam(torch.optim.Optimizer):
                         continue
                     if model_p.grad.data.is_sparse:
                         raise RuntimeError('FusedAdam does not support sparse gradients, please consider SparseAdam instead')
+                    # Copy model grads to master params
+                    p.grad = model_p.grad.float()
                 else:
                     if p.grad is None:
                         continue
@@ -179,10 +181,8 @@ class FusedAdam(torch.optim.Optimizer):
                     v_bf.append(state['exp_avg_sq'])
                 elif p.dtype == torch.float32:
                     if self.use_master:
-                        g_32.append(model_p.grad.data)
                         p_32_model.append(model_p.data)
-                    else:
-                        g_32.append(p.grad.data)
+                    g_32.append(p.grad.data)
                     p_32.append(p.data)
                     m_32.append(state['exp_avg'])
                     v_32.append(state['exp_avg_sq'])

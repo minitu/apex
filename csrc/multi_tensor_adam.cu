@@ -273,7 +273,7 @@ struct AdamCapturableMasterFunctor
     int chunk_idx = tl.block_to_chunk[blockIdx.x];
     int n = tl.sizes[tensor_loc];
 
-    T* g = (T*)tl.addresses[0][tensor_loc];
+    FULL_T* g = (FULL_T*)tl.addresses[0][tensor_loc];
     g += chunk_idx*chunk_size;
 
     FULL_T* p = (FULL_T*)tl.addresses[1][tensor_loc];
@@ -306,7 +306,7 @@ struct AdamCapturableMasterFunctor
         if(i < n && i < chunk_size)
         {
           r_g[ii] = static_cast<MATH_T>(g[i]) * (*inv_scale);
-          g[i] = static_cast<T>(r_g[ii]);
+          g[i] = static_cast<FULL_T>(r_g[ii]);
           r_p[ii] = static_cast<MATH_T>(p[i]);
           r_m[ii] = static_cast<MATH_T>(m[i]);
           r_v[ii] = static_cast<MATH_T>(v[i]);
@@ -455,7 +455,7 @@ void multi_tensor_adam_capturable_master_cuda(
   using namespace at;
 
   DISPATCH_DOUBLE_FLOAT_HALF_AND_BFLOAT(
-    tensor_lists[0][0].scalar_type(), 0, "adam",
+    tensor_lists[4][0].scalar_type(), 0, "adam",
     DISPATCH_DOUBLE_FLOAT_HALF_AND_BFLOAT(
       tensor_lists[1][0].scalar_type(), 1, "adam",
       multi_tensor_apply<5>(
