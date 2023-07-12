@@ -2090,7 +2090,7 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
   // run
   // dbias
   at::Half* dy = inputs[2].data_ptr<at::Half>();
-  auto options = at::TensorOptions().dtype(at::Half).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
+  auto options = at::TensorOptions().dtype(at::kHalf).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
   auto bgrad = at::empty(b_dim, options, output_format);
   at::Half* db = bgrad.data_ptr<at::Half>();
   run_dbias(y_dim,
