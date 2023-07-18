@@ -1116,7 +1116,7 @@ run_drelu_dbias(int64_t* dy_dim,
                 at::Half* devPtrDY,
 		at::Half* devPtrR,
 		at::Half* devPtrDR,
-                float* devPtrDB) {
+                at::Half* devPtrDB) {
 
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
     std::stringstream log_buf;
@@ -1165,7 +1165,7 @@ run_drelu_dbias(int64_t* dy_dim,
                          .setStrides(4, stride)
                          .setId('y')
                          .setAlignment(16)
-                         .setDataType(CUDNN_DATA_FLOAT)
+                         .setDataType(dataType)
                          .build();
         DEBUG_CUDNN_MSG(log_buf, biasGradTensor.describe());
 
@@ -1945,9 +1945,9 @@ std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, 
   at::Half* r = inputs[2].data_ptr<at::Half>();
   auto drelu = at::empty_like(inputs[2]);
   at::Half* dr = drelu.data_ptr<at::Half>();
-  auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
+  auto options = at::TensorOptions().dtype(at::kHalf).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
   auto bgrad = at::empty(b_dim, options, output_format);
-  float* db = bgrad.data_ptr<float>();
+  at::Half* db = bgrad.data_ptr<at::Half>();
   run_drelu_dbias(y_dim,
 		  CUDNN_DATA_HALF,
 		  dy,
