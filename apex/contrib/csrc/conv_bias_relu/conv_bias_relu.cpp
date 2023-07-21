@@ -1178,7 +1178,7 @@ run_drelu_dbias(int64_t* dy_dim,
 
 	// Define the bias backward operation
 	auto biasDesc = cudnn_frontend::ReductionDescBuilder()
-          .setMathPrecision(CUDNN_DATA_FLOAT)
+          .setMathPrecision(CUDNN_DATA_HALF)
 	  .setReductionOp(CUDNN_REDUCE_TENSOR_ADD)
 	  .build();
 	DEBUG_CUDNN_MSG(log_buf, biasDesc.describe());
@@ -1585,7 +1585,7 @@ run_dbias(int64_t* x_dim,
 
 	// Define the bias backward operation
 	auto biasDesc = cudnn_frontend::ReductionDescBuilder()
-          .setMathPrecision(CUDNN_DATA_FLOAT)
+          .setMathPrecision(CUDNN_DATA_HALF)
 	  .setReductionOp(CUDNN_REDUCE_TENSOR_ADD)
 	  .build();
 	DEBUG_CUDNN_MSG(log_buf, biasDesc.describe());
