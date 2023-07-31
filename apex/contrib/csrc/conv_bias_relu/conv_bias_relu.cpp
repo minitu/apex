@@ -796,7 +796,6 @@ run_conv_cscale_cbias_add_relu(int64_t* x_dim,
                                at::Half* devPtrW,
                                at::Half* devPtrS,
                                at::Half* devPtrB,
-                               at::Half* devPtrZ,
                                at::Half* devPtrY) {
 
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
@@ -883,16 +882,6 @@ run_conv_cscale_cbias_add_relu(int64_t* x_dim,
                     .setVirtual()
                     .build();
         DEBUG_CUDNN_MSG(log_buf, afterBiasTensor.describe());
-
-        generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
-        auto zTensor = cudnn_frontend::TensorBuilder()
-                    .setDim(4, y_dim)
-                    .setStrides(4, stride)
-                    .setId('z')
-                    .setAlignment(16)
-                    .setDataType(dataType)
-                    .build();
-        DEBUG_CUDNN_MSG(log_buf, zTensor.describe());
 
         generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
         auto afterAddTensor = cudnn_frontend::TensorBuilder()
@@ -987,7 +976,7 @@ run_conv_cscale_cbias_add_relu(int64_t* x_dim,
         // Create an Add Node.
         auto add_op = cudnn_frontend::OperationBuilder(CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
                           .setxDesc(bias_op.getOutputTensor())
-                          .setbDesc(zTensor)
+                          .setbDesc(xTensor)
                           .setyDesc(afterAddTensor)
                           .setpwDesc(addDesc)
                           .build();
@@ -1024,12 +1013,12 @@ run_conv_cscale_cbias_add_relu(int64_t* x_dim,
         if (workspace_size > 0) {
           workspace_ptr = workspace_tensor.data_ptr<float>();
         }
-        void* data_ptrs[] = {devPtrX, devPtrW, devPtrS, devPtrB, devPtrZ, devPtrY};
-        int64_t uids[]    = {'x', 'w', 's', 'b', 'z', 'y'};
+        void* data_ptrs[] = {devPtrX, devPtrW, devPtrS, devPtrB, devPtrY};
+        int64_t uids[]    = {'x', 'w', 's', 'b', 'y'};
         auto variantPack  = cudnn_frontend::VariantPackBuilder()
           .setWorkspacePointer(workspace_ptr)
-          .setDataPointers(6, data_ptrs)
-          .setUids(6, uids)
+          .setDataPointers(5, data_ptrs)
+          .setUids(5, uids)
                    .build();
         DEBUG_CUDNN_MSG(log_buf, "variantPack " << variantPack.describe());
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
@@ -2138,7 +2127,6 @@ at::Tensor conv_cscale_cbias_add_relu_forward(std::vector<at::Tensor> inputs, in
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* s = inputs[2].data_ptr<at::Half>();
   at::Half* b = inputs[3].data_ptr<at::Half>();
-  at::Half* z = inputs[4].data_ptr<at::Half>();
   auto out = at::empty(y_dim, inputs[0].type(), at::MemoryFormat::ChannelsLast);
   at::Half* y = out.data_ptr<at::Half>();
 
@@ -2153,7 +2141,6 @@ at::Tensor conv_cscale_cbias_add_relu_forward(std::vector<at::Tensor> inputs, in
                              w,
                              s,
                              b,
-                             z,
                              y);
 
   DEBUG_MSG("[DEBUG] conv-cscale-cbias-add-relu : " << y.to(at::kFloat).sum().item<float>());
