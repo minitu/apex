@@ -2359,7 +2359,6 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
   auto dscale = at::empty_like(inputs[4]);
   at::Half* ds = dscale.data_ptr<at::Half>();
 
-  auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
   run_drelu_dscale(y_dim,
 		   CUDNN_DATA_HALF,
 		   dy,
@@ -2504,7 +2503,6 @@ std::vector<at::Tensor> conv_cscale_cbias_add_relu_backward(std::vector<at::Tens
   auto dscale = at::empty_like(inputs[4]);
   at::Half* ds = dscale.data_ptr<at::Half>();
 
-  auto options = at::TensorOptions().dtype(at::kFloat).layout(inputs[0].layout()).device(inputs[0].device()).requires_grad(false);
   run_drelu_dadd_dscale(y_dim,
                         CUDNN_DATA_HALF,
                         dy,
