@@ -159,7 +159,7 @@ cudnn_frontend::ExecutionPlan& getOrCreatePlan(cudnnHandle_t handle_,
                                                      .setEngineConfig(engine_configs[count], opGraph.getTag())
                                                      .build()));
           break;
-        } catch (cudnn_frontend::cudnnException e) {
+        } catch (cudnn_frontend::cudnnException const& e) {
           if (++count == max_tries) throw e;
         }
       }
@@ -342,7 +342,7 @@ run_conv_bias(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -559,7 +559,7 @@ run_conv_bias_mask_relu(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -778,7 +778,7 @@ run_conv_cscale_cbias_relu(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1024,7 +1024,7 @@ run_conv_cscale_cbias_add_relu(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1204,7 +1204,7 @@ run_conv_bias_relu(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1222,9 +1222,6 @@ run_drelu_dscale(int64_t* dy_dim,
     std::stringstream log_buf;
 
     try {
-        int convDim = 2;
-        float alpha = 1.0f;
-        float beta = 0.0f;
         int64_t s_dim[] = {1, dy_dim[1], 1, 1};
 
         // Creates the necessary tensor descriptors
@@ -1350,7 +1347,7 @@ run_drelu_dscale(int64_t* dy_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
         std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1369,9 +1366,6 @@ run_drelu_dadd_dscale(int64_t* dy_dim,
     std::stringstream log_buf;
 
     try {
-        int convDim = 2;
-        float alpha = 1.0f;
-        float beta = 0.0f;
         int64_t s_dim[] = {1, dy_dim[1], 1, 1};
 
         // Create the necessary tensor descriptors
@@ -1496,7 +1490,7 @@ run_drelu_dadd_dscale(int64_t* dy_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
         std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1514,9 +1508,6 @@ run_drelu_dbias(int64_t* dy_dim,
     std::stringstream log_buf;
 
     try {
-	int convDim = 2;
-	float alpha = 1.0f;
-	float beta = 0.0f;
 	int64_t b_dim[] = {1, dy_dim[1], 1, 1};
 
 	// Creates the necessary tensor descriptors
@@ -1630,7 +1621,7 @@ run_drelu_dbias(int64_t* dy_dim,
 	cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
 	checkCudnnErr(status);
 	cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
         std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -1807,7 +1798,7 @@ run_dconv_drelu_dbias(int64_t* x_dim,
 	cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
 	checkCudnnErr(status);
 	cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
         std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 
@@ -1937,7 +1928,7 @@ run_dconv(int64_t* x_dim,
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
         checkCudnnErr(status);
         cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
       std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 }
@@ -2103,7 +2094,7 @@ run_dconv_add(int64_t* x_dim,
     cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
     checkCudnnErr(status);
     cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-  } catch (cudnn_frontend::cudnnException e) {
+  } catch (cudnn_frontend::cudnnException const& e) {
     std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
   }
 }
@@ -2118,7 +2109,6 @@ run_dbias(int64_t* x_dim,
     cudnnHandle_t handle_ = torch::native::getCudnnHandle();
     std::stringstream log_buf;
     try {
-	int convDim = 2;
 	int64_t b_dim[] = {1, x_dim[1], 1, 1};
 
 	int64_t stride[4];
@@ -2194,7 +2184,7 @@ run_dbias(int64_t* x_dim,
 	cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
 	checkCudnnErr(status);
 	cudnn_frontend::throw_if([status]() { return (status != CUDNN_STATUS_SUCCESS); }, "Plan execute error", status);
-    } catch (cudnn_frontend::cudnnException e) {
+    } catch (cudnn_frontend::cudnnException const& e) {
         std::cout << log_buf.str() << "[ERROR] Exception " << e.what() << std::endl;
     }
 
@@ -2320,8 +2310,6 @@ at::Tensor conv_cscale_cbias_relu_forward(std::vector<at::Tensor> inputs, int64_
 
 
 std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
-  bool requires_grad = inputs[0].requires_grad();
-
   for (int i = 0; i <= 4; i++) {
     CHECK_INPUT(inputs[i]);
   }
@@ -2330,7 +2318,6 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
 
   // create output vector
   std::vector<at::Tensor> outputs;
-  auto output_format = at::MemoryFormat::ChannelsLast;
 
   // setup dimensions
   int64_t x_dim[]    = {0, 0, 0, 0};
@@ -2344,8 +2331,6 @@ std::vector<at::Tensor> conv_cscale_cbias_relu_backward(std::vector<at::Tensor> 
     w_dim[dim] = inputs[1].size(axis[dim]);
     y_dim[dim] = inputs[3].size(axis[dim]);
   }
-
-  int64_t b_dim[]       = {1, y_dim[1], 1, 1};
 
   int64_t conv_pad[]        = {padding, padding};
   int64_t conv_stride[]     = {stride, stride};
@@ -2462,8 +2447,6 @@ at::Tensor conv_cscale_cbias_add_relu_forward(std::vector<at::Tensor> inputs, in
 
 
 std::vector<at::Tensor> conv_cscale_cbias_add_relu_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
-  bool requires_grad = inputs[0].requires_grad();
-
   for (int i = 0; i <= 4; i++) {
     CHECK_INPUT(inputs[i]);
   }
@@ -2472,7 +2455,6 @@ std::vector<at::Tensor> conv_cscale_cbias_add_relu_backward(std::vector<at::Tens
 
   // create output vector
   std::vector<at::Tensor> outputs;
-  auto output_format = at::MemoryFormat::ChannelsLast;
 
   // setup dimensions
   int64_t x_dim[] = {0, 0, 0, 0};
@@ -2486,8 +2468,6 @@ std::vector<at::Tensor> conv_cscale_cbias_add_relu_backward(std::vector<at::Tens
     w_dim[dim] = inputs[1].size(axis[dim]);
     y_dim[dim] = inputs[3].size(axis[dim]);
   }
-
-  int64_t b_dim[] = {1, y_dim[1], 1, 1};
 
   int64_t conv_pad[]      = {padding, padding};
   int64_t conv_stride[]   = {stride, stride};
@@ -2612,8 +2592,6 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
 
 
 std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
-  bool requires_grad = inputs[0].requires_grad();
-
   for (int i = 0; i <= 3; i++) {
     CHECK_INPUT(inputs[i]);
   }
@@ -2760,8 +2738,6 @@ std::vector<at::Tensor> conv_bias_forward(std::vector<at::Tensor> inputs, int64_
 
 
 std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
-  bool requires_grad = inputs[0].requires_grad();
-
   for (int i = 0; i <= 2; i++) {
     CHECK_INPUT(inputs[i]);
   }
