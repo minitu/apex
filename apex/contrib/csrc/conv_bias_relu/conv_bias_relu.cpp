@@ -2000,7 +2000,7 @@ run_dconv_add(int64_t* x_dim,
 
     generateStrides(y_dim, stride, 4, CUDNN_TENSOR_NHWC);
     auto addTensor = cudnn_frontend::TensorBuilder()
-      .setDim(4, dy_dim)
+      .setDim(4, y_dim)
       .setStrides(4, stride)
       .setId('a')
       .setAlignment(16)
