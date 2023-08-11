@@ -2229,7 +2229,7 @@ std::vector<at::Tensor> conv_bias_mask_relu_forward(std::vector<at::Tensor> inpu
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* b = inputs[2].data_ptr<at::Half>();
   int8_t* m = inputs[3].data_ptr<int8_t>();
-  auto out = at::empty(y_dim, inputs[0].type(), output_format);
+  auto out = at::empty(y_dim, inputs[0].options(), output_format);
   at::Half* y = out.data_ptr<at::Half>();
 
   run_conv_bias_mask_relu(x_dim,
@@ -2287,7 +2287,7 @@ at::Tensor conv_cscale_cbias_relu_forward(std::vector<at::Tensor> inputs, int64_
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* s = inputs[2].data_ptr<at::Half>();
   at::Half* b = inputs[3].data_ptr<at::Half>();
-  auto out = at::empty(y_dim, inputs[0].type(), at::MemoryFormat::ChannelsLast);
+  auto out = at::empty(y_dim, inputs[0].options(), at::MemoryFormat::ChannelsLast);
   at::Half* y = out.data_ptr<at::Half>();
 
   run_conv_cscale_cbias_relu(x_dim,
@@ -2424,7 +2424,7 @@ at::Tensor conv_cscale_cbias_add_relu_forward(std::vector<at::Tensor> inputs, in
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* s = inputs[2].data_ptr<at::Half>();
   at::Half* b = inputs[3].data_ptr<at::Half>();
-  auto out = at::empty(y_dim, inputs[0].type(), at::MemoryFormat::ChannelsLast);
+  auto out = at::empty(y_dim, inputs[0].options(), at::MemoryFormat::ChannelsLast);
   at::Half* y = out.data_ptr<at::Half>();
 
   run_conv_cscale_cbias_add_relu(x_dim,
@@ -2568,7 +2568,7 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
   at::Half* x = inputs[0].data_ptr<at::Half>();
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* b = inputs[2].data_ptr<at::Half>();
-  auto out = at::empty(y_dim, inputs[0].type(), output_format);
+  auto out = at::empty(y_dim, inputs[0].options(), output_format);
   at::Half* y = out.data_ptr<at::Half>();
 
   run_conv_bias_relu(x_dim,
@@ -2714,7 +2714,7 @@ std::vector<at::Tensor> conv_bias_forward(std::vector<at::Tensor> inputs, int64_
   at::Half* x = inputs[0].data_ptr<at::Half>();
   at::Half* w = inputs[1].data_ptr<at::Half>();
   at::Half* b = inputs[2].data_ptr<at::Half>();
-  auto out = at::empty(y_dim, inputs[0].type(), output_format);
+  auto out = at::empty(y_dim, inputs[0].options(), output_format);
   at::Half* y = out.data_ptr<at::Half>();
 
   run_conv_bias(x_dim,
