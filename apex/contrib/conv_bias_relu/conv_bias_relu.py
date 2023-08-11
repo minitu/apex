@@ -100,8 +100,8 @@ class ConvFrozenScaleBiasReLU_(torch.autograd.Function):
 class ConvFrozenScaleBiasAddReLU_(torch.autograd.Function):
     @staticmethod
     @torch.cuda.amp.custom_fwd(cast_inputs=torch.half)
-    def forward(ctx, x, weight, scale, bias, padding, stride):
-        output = fused_conv_bias_relu.forward_cscale_cbias_add_relu([x, weight, scale, bias], padding, stride)
+    def forward(ctx, x, weight, scale, bias, other, padding, stride):
+        output = fused_conv_bias_relu.forward_cscale_cbias_add_relu([x, weight, scale, bias, other], padding, stride)
         ctx.save_for_backward(x, weight, scale, output)
         ctx.padding = padding
         ctx.stride = stride
@@ -116,7 +116,7 @@ class ConvFrozenScaleBiasAddReLU_(torch.autograd.Function):
         stride = ctx.stride
         grads = fused_conv_bias_relu.backward_cscale_cbias_add_relu(bwd_args, padding, stride)
 
-        return grads[0], grads[1], None, None, None, None
+        return grads[0], grads[1], None, None, grads[2], None, None
 
 
 ConvBiasReLU = ConvBiasReLU_.apply
