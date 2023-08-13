@@ -1494,8 +1494,8 @@ run_drelu_dadd_dscale(int64_t* dy_dim,
         int64_t uids[]    = {'y', 'r', 'a', 's', 'x'};
         auto variantPack  = cudnn_frontend::VariantPackBuilder()
           .setWorkspacePointer(workspace_ptr)
-          .setDataPointers(4, data_ptrs)
-          .setUids(4, uids)
+          .setDataPointers(5, data_ptrs)
+          .setUids(5, uids)
           .build();
         DEBUG_CUDNN_MSG(log_buf, "variantPack " << variantPack.describe());
         cudnnStatus_t status = cudnnBackendExecute(handle_, plan.get_raw_desc(), variantPack.get_raw_desc());
