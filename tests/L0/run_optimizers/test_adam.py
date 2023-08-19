@@ -143,8 +143,8 @@ class AdamTest(unittest.TestCase):
                 m = module[0]
                 m_ = module[1]
                 if isinstance(m, (nn.Conv2d, nn.Linear)):
-                    torch.testing.assert_close(m.weight, m_.weight, atol=1e-3, rtol=1e-3, equal_nan=True)
-                    torch.testing.assert_close(m.weight.grad, m_.weight.grad, atol=1e-3, rtol=1e-3, equal_nan=True)
+                    torch.testing.assert_close(m.weight, m_.weight.float(), atol=1e-3, rtol=1e-3, equal_nan=True)
+                    torch.testing.assert_close(m.weight.grad, m_.weight.grad.float(), atol=1e-3, rtol=1e-3, equal_nan=True)
 
             # Init for next iteration
             self.optimizer.zero_grad()
