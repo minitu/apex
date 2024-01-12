@@ -1597,11 +1597,13 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                     out_bytes[..., :-copy_size].zero_()
 
         # Copy data from parameter buckets to parameters
+        '''
         _multi_tensor_copy(
             buffers_in,
             buffers_out,
             dummy_overflow_buf=self._dummy_overflow_buf,
         )
+        '''
 
     def grad_buffer_view(self, param: torch.nn.Parameter) -> torch.Tensor:
         """Construct view into grad buffer corresponding to param
