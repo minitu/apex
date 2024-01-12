@@ -1542,7 +1542,7 @@ class DistributedFusedAdam(torch.optim.Optimizer):
             self._finish_bucket_param_sync()
 
         # Copy values from bucket buffers to params
-        self._param_copy_fragments(fragments)
+        #self._param_copy_fragments(fragments)
 
         # Delete buckets if possible
         for fragment in fragments:
